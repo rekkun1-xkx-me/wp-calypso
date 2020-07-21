@@ -22,6 +22,7 @@ import {
 	submitPayPalExpressRequest,
 } from './payment-method-helpers';
 import { createStripePaymentMethod } from 'lib/stripe';
+import { createEbanxToken } from 'lib/store-transactions';
 
 const { select, dispatch } = defaultRegistry;
 
@@ -125,13 +126,33 @@ export async function stripeCardProcessor( submitData ) {
 }
 
 export async function ebanxCardProcessor( submitData ) {
-	// TODO
-	throw new Error( 'ebanxCardProcessor not implemented' );
+	const paymentMethodToken = await createEbanxToken( 'new_purchase', {
+		country: submitData.countryCode,
+		name: submitData.name,
+		number: submitData.number,
+		cvv: submitData.cvv,
+		'expiration-date': submitData[ 'expiration-date' ],
+	} );
+	const pending = submitEbanxCardTransaction(
+		{
+			...submitData,
+			siteId: select( 'wpcom' )?.getSiteId?.(),
+			deviceId: paymentMethodToken?.deviceId,
+			domainDetails: getDomainDetails( select ),
+			paymentMethodToken,
+		},
+		wpcomTransaction
+	);
+	pending.then( ( result ) => {
+		// TODO: do this automatically when calling setTransactionComplete
+		dispatch( 'wpcom' ).setTransactionResponse( result );
+	} );
+	return pending;
 }
 
 export async function dlocalCardProcessor( submitData ) {
 	// TODO
-	throw new Error( 'dlocalCardProcessor not implemented' );
+	throw new Error( 'dlocalCardProcessor not implemented', submitData, submitDlocalCardTransaction );
 }
 
 export async function multiPartnerCardProcessor( submitData ) {
