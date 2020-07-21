@@ -38,7 +38,6 @@ export default function CreditCardFields() {
 	const { changeCardholderName, changeBrand, setCardDataError, setCardDataComplete } = useDispatch(
 		'credit-card'
 	);
-	const [ shouldShowContactFields, setShowContactFields ] = useState( false );
 
 	const handleStripeFieldChange = ( input ) => {
 		setCardDataComplete( input.elementType, input.complete );
@@ -62,14 +61,25 @@ export default function CreditCardFields() {
 	};
 
 	const fields = useSelect( ( select ) => select( 'credit-card' ).getFields() );
-	const { setFieldValue } = useDispatch( 'credit-card' );
+	const shouldShowContactFields = useSelect( ( select ) =>
+		select( 'credit-card' ).getShowContactFields()
+	);
+	const { setFieldValue, setShowContactFields } = useDispatch( 'credit-card' );
 	const getField = ( key ) => fields[ key ] || {};
 	const getFieldValue = ( key ) => getField( key ).value ?? '';
 	const getErrorMessagesForField = ( key ) => {
-		// TODO: do actual validation
-		if ( ! isValid( getField( key ) ) ) {
+		const managedValue = getField( key );
+
+		if ( managedValue.isRequired && managedValue.value === '' ) {
 			return [ __( 'This field is required.' ) ];
 		}
+
+		if ( ! isValid( getField( key ) ) ) {
+			return managedValue?.errors?.length !== 0
+				? managedValue.errors
+				: [ __( 'There is an error in this field.' ) ];
+		}
+
 		return [];
 	};
 
@@ -111,7 +121,7 @@ export default function CreditCardFields() {
 						<input
 							type="checkbox"
 							checked={ ! shouldShowContactFields }
-							onChange={ ( event ) => setShowContactFields( ! event.target.checked ) }
+							onChange={ () => setShowContactFields( ! shouldShowContactFields ) }
 						/>
 						<LabelText>{ __( 'Credit card address is the same as contact details' ) }</LabelText>
 					</Label>
